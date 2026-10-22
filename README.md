@@ -13,6 +13,6 @@ Open the published page in any modern browser (works on phones). No installation
 Notes
 Plant counts are indicative and should be checked against local agronomic guidance.
 Model layouts are based on the author's own planning slides.
-Licence
+# Licence
 
 Add your preferred licence here (for example MIT), or keep all rights reserved.
