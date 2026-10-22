@@ -1,0 +1,222 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plantation Layout Planner</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f1eee3;--pn:#fff;--ink:#1f2a1f;--mut:#69735f;--ln:#d8d3c0;--ac:#2f6b3a;--act:#e8f2e6}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151a15;--pn:#212821;--ink:#e8ece4;--mut:#9aa595;--ln:#38423a;--ac:#6fbf7d;--act:#2a3a2c}}
+:root[data-theme="dark"]{--bg:#151a15;--pn:#212821;--ink:#e8ece4;--mut:#9aa595;--ln:#38423a;--ac:#6fbf7d;--act:#2a3a2c}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:flex;height:100%}
+.panel{width:350px;max-width:100%;overflow-y:auto;background:var(--pn);border-right:1px solid var(--ln);padding:14px}
+.stage{flex:1;position:relative;min-width:0}
+canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+h1{font-size:18px;margin:0 0 10px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:16px 0 6px}
+button,input,select{font:inherit;color:var(--ink)}
+button{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:6px 10px;cursor:pointer}
+button.on,button.primary{background:var(--ac);border-color:var(--ac);color:#fff}
+button.primary{width:100%;padding:10px;margin-top:12px;font-weight:600}
+input[type=number],input.nm{width:100%;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:4px 6px}
+input[type=color]{width:30px;height:28px;padding:0;border:0;background:none}
+.row{display:flex;gap:8px}.row label{flex:1}label{font-size:12px;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.card{border:1px solid var(--ln);border-radius:10px;padding:8px;margin-bottom:8px}.card.on{border-color:var(--ac);background:var(--act)}
+.ch{display:flex;align-items:center;gap:6px;margin-bottom:6px}.ch span{font-size:12px;color:var(--mut);white-space:nowrap}
+.g{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}option{background:var(--pn)}.hint{font-size:12px;color:var(--mut);margin:6px 0 0}
+#info{margin-top:10px;font-size:13px;background:var(--act);border-radius:8px;padding:8px}
+.zoom{position:absolute;right:10px;top:10px;display:flex;gap:6px}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;align-items:center;gap:10px;padding:16px;overflow:auto;z-index:9}
+#ov img{max-width:100%;border-radius:8px;background:#fff}
+#ov .bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#ov p{color:#fff;margin:0;font-size:12px;text-align:center}
+@media(max-width:760px){.app{flex-direction:column}.stage{order:-1;flex:none;height:55vh}.panel{width:100%;flex:1;border-right:0}}
+</style></head><body>
+<div class="app"><aside class="panel">
+<h1>🌴 Plantation Planner</h1>
+<h2>Farm details</h2>
+<label>Farm ID<input class="nm" id="fid" placeholder="e.g. KA-HSR-014"></label>
+<label>Farmer name<input class="nm" id="fnm"></label>
+<label>Note<textarea id="fnt" rows="2" placeholder="Survey no., village, remarks…" style="width:100%;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:4px 6px;color:var(--ink);font:inherit"></textarea></label>
+<h2>1 · Farm shape</h2>
+<div class="row"><label>Width (m)<input id="pw" type="number" value="100"></label><label>Length (m)<input id="pl" type="number" value="60"></label></div>
+<div class="chips" id="pre"><button data-p="rect">Rectangle</button><button data-p="tri">Triangle</button><button data-p="trap">Trapezoid</button><button data-p="L">L-shape</button><button data-p="pent">Pentagon</button><button data-p="hex">Hexagon</button><button data-p="circ">Circle</button><button data-p="rtri">Right triangle</button><button data-p="para">Parallelogram</button><button data-p="U">U-shape</button><button data-p="irr">Irregular</button></div>
+<p class="hint">Or pick <b>Boundary</b> below and tap the map to place corners of any shape. Tap the first corner (or Close) to finish. <b>Edit plants</b> mode: tap a plant of the selected species to remove it, tap empty ground to add one.</p>
+<h2>Farm size &amp; boundary</h2>
+<div class="row"><label>Real area<input id="ar" type="number" step="any"></label><label>Unit<select id="au" style="width:100%;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:4px"><option value="4046.856">Acres</option><option value="10000">Hectares</option><option value="1">m²</option><option value="40.4686">Cents</option><option value="101.17">Guntas</option></select></label></div>
+<button id="sa" style="margin-top:6px">Set boundary to this area</button>
+<div class="row" style="margin-top:8px"><label>Edge<select id="es" style="width:100%;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:4px"></select></label><label>Real length (m)<input id="el" type="number" step="any"></label></div>
+<button id="se" style="margin-top:6px">Set this edge length</button>
+<p class="hint">Draw the map first, then enter the real area (or one real edge length). The whole shape scales to match. Spacings stay in real metres.</p>
+<details style="margin-top:6px"><summary style="font-size:12px;color:var(--mut);cursor:pointer">Edit corner coordinates (m)</summary><div id="verts" style="margin-top:6px"></div><button id="av">+ Add corner</button></details>
+<h2>2 · Models from your deck</h2>
+<select id="msel" style="width:100%;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:6px"></select>
+<button class="primary" id="mapply" style="margin-top:8px">Apply model to this farm</button>
+<p class="hint">Zones are % of the farm's width/height, so a model rescales to any area or shape. Every species stays editable below.</p>
+<h2>3 · Species, spacing &amp; zones</h2>
+<div id="sp"></div><button id="add">+ Add species</button>
+<p class="hint">Tap a species card to select it. Use <b>Block</b> mode to draw a separate area for the selected species; otherwise it fills the whole farm.</p>
+<h2>4 · Tools</h2>
+<div class="chips" id="modes"><button data-m="boundary" class="on">Boundary</button><button data-m="block">Block</button><button data-m="plant">Edit plants</button><button data-m="edit">Move points</button><button data-m="pan">Pan</button></div>
+<div class="chips"><button id="close">Close shape</button><button id="cb">Clear boundary</button><button id="cbl">Clear block</button><button id="cm">Clear placed plants</button><button id="ca">Clear all (selected)</button><button id="cr">Restore removed</button><button id="cf">Make all editable</button><label><input type="checkbox" id="rn" checked> Row numbers</label><label><input type="checkbox" id="snap" checked> Snap 0.5 m</label></div>
+<div id="info"></div>
+<button class="primary" id="exp">Export image</button>
+</aside>
+<main class="stage"><canvas id="c"></canvas><div class="zoom"><button id="zi">+</button><button id="zo">−</button><button id="zf">Fit</button></div></main></div>
+<div id="ov"><div class="bar"><button id="dl" class="primary" style="width:auto">Download PNG</button><button id="sh">Share</button><button id="xc">Close</button></div><p>If download doesn't start, long-press (or right-click) the image and choose Save image.</p><img id="im" alt="Plantation layout"></div>
+<script>
+const $=s=>document.querySelector(s),c=$('#c'),g=c.getContext('2d');
+let B=[],closed=false,mode='boundary',S=[],act=0,drag=null,view={s:8,x:30,y:30},PL=[],cur=null,cw=0,ch=0,blob=null;
+const COL=['#2e7d32','#e65100','#6a1b9a','#0277bd','#c62828','#f9a825'];
+const addSp=(n,rs,cs)=>S.push({name:n,color:COL[S.length%6],rs,cs,ang:0,ox:0,oy:0,inset:1,block:[],bc:false,pat:'square',mk:'circle',al:3,man:[],zone:null,md:0,mr:'',rd:0,rr:''});
+addSp('Coconut',7.5,7.5);addSp('Banana',2,2);S[1].pat='border';S[1].mk='diamond';
+function pip(x,y,P){let r=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])r=!r}return r}
+function edge(x,y,P){let m=1e9;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((x-a[0])*dx+(y-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));m=Math.min(m,Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy))}return m}
+const area=P=>Math.abs(P.reduce((s,p,i)=>{const q=P[(i+1)%P.length];return s+p[0]*q[1]-q[0]*p[1]},0))/2;
+const reg=sp=>sp.bc&&sp.block.length>2?sp.block:(closed?B:null);
+const okf=(sp,R,x,y)=>pip(x,y,R)&&edge(x,y,R)>=sp.inset&&(R===B||(pip(x,y,B)&&edge(x,y,B)>=sp.inset));
+function border(sp,R){const o=[];R.forEach((a,i)=>{const b=R[(i+1)%R.length],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);if(!L)return;let nx=-dy/L,ny=dx/L;if(!pip((a[0]+b[0])/2+nx*.3,(a[1]+b[1])/2+ny*.3,R)){nx=-nx;ny=-ny}
+for(let k=0;k<=Math.floor(L/sp.cs);k++){const q=k*sp.cs/L,x=a[0]+dx*q+nx*sp.inset,y=a[1]+dy*q+ny*sp.inset;if(pip(x,y,R))o.push([x,y,0,0,-1])}});return o}
+const keep=(v,m,r)=>!(m>0)||String(r).split(',').some(a=>a.trim()!==''&&+a===((Math.round(v)%m)+m)%m);
+function zk(sp,x,y,q){if(sp.zone){let a=1e9,b=1e9,c=-1e9,d=-1e9;B.forEach(p=>{a=Math.min(a,p[0]);c=Math.max(c,p[0]);b=Math.min(b,p[1]);d=Math.max(d,p[1])});const u=(x-a)/(c-a||1),v=(y-b)/(d-b||1);if(!sp.zone.some(r=>u>=r[0]&&u<=r[2]&&v>=r[1]&&v<=r[3]))return false}return keep(q[2],sp.md,sp.mr)&&keep(q[3],sp.rd,sp.rr)}
+const parseZ=s=>{const z=s.split(';').map(a=>a.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/)).filter(Boolean).map(m=>[+m[1]/100,+m[3]/100,+m[2]/100,+m[4]/100]);return z.length?z:null};
+const zTxt=z=>z?z.map(r=>+(r[0]*100).toFixed(1)+'-'+ +(r[2]*100).toFixed(1)+','+ +(r[1]*100).toFixed(1)+'-'+ +(r[3]*100).toFixed(1)).join('; '):'';
+function plants(sp){const man=(sp.man||[]).map((q,mi)=>[q[0],q[1],0,0,mi]);const R=reg(sp);if(!R||sp.pat=='none')return man;if(sp.pat=='border')return man.concat(border(sp,R));let ox=1e9,oy=1e9,r=0;R.forEach(p=>{ox=Math.min(ox,p[0]);oy=Math.min(oy,p[1])});R.forEach(p=>r=Math.max(r,Math.hypot(p[0]-ox,p[1]-oy)));
+const a=sp.ang*Math.PI/180,co=Math.cos(a),si=Math.sin(a),ni=Math.ceil(r/sp.cs)+1,nj=Math.ceil(r/(sp.pat=='twin'?(sp.rs+sp.al)/2:sp.rs))+1;if((2*ni+1)*(2*nj+1)>400000)return[];const out=[];
+const pts=[],ds=new Set(sp.del),dr=new Set(sp.dr);
+for(let i=-ni;i<=ni;i++)for(let j=-nj;j<=nj;j++){let lx=i*sp.cs,ly=j*sp.rs;const odd=((j%2)+2)%2;
+if(sp.pat=='twin')ly=Math.floor(j/2)*(sp.rs+sp.al)+odd*sp.rs;
+if(sp.pat=='stag'&&odd)lx+=sp.cs/2;
+pts.push([lx,ly,i,j]);if(sp.pat=='quin')pts.push([lx+sp.cs/2,ly+sp.rs/2,i+.5,j+.5])}
+for(const q of pts){const lx=sp.ox+q[0],ly=sp.oy+q[1],x=ox+lx*co-ly*si,y=oy+lx*si+ly*co;if(okf(sp,R,x,y)&&zk(sp,x,y,q)&&!ds.has(q[2]+','+q[3])&&!dr.has(q[3]))out.push([x,y,q[2],q[3]])}
+let res=out;if(sp.maxr>0||sp.maxc>0){const js=[...new Set(out.map(q=>q[3]))].sort((a,b)=>a-b),kj=new Set(sp.maxr>0?js.slice(0,sp.maxr):js),cn={};res=out.filter(q=>{if(!kj.has(q[3]))return false;if(sp.maxc>0){cn[q[3]]=(cn[q[3]]||0)+1;return cn[q[3]]<=sp.maxc}return true})}
+return res.concat(man)}
+function fit(W,H,pad){if(B.length<2)return{s:8,x:30,y:30};let a=1e9,b=1e9,e=-1e9,d=-1e9;B.forEach(p=>{a=Math.min(a,p[0]);e=Math.max(e,p[0]);b=Math.min(b,p[1]);d=Math.max(d,p[1])});
+const s=Math.min((W-2*pad)/Math.max(e-a,1),(H-2*pad)/Math.max(d-b,1));return{s,x:(W-(e-a)*s)/2-a*s,y:(H-(d-b)*s)/2-b*s}}
+function draw(g,W,H,v,f,lh){const mh=H-lh,P=p=>[p[0]*v.s+v.x,p[1]*v.s+v.y];
+g.fillStyle='#faf8ef';g.fillRect(0,0,W,H);g.save();g.beginPath();g.rect(0,0,W,mh);g.clip();
+const st=[1,2,5,10,20,50,100,200,500].find(q=>q*v.s>=36*f)||500;g.strokeStyle='#e6e1cc';g.lineWidth=f;g.beginPath();
+for(let x=Math.floor(-v.x/v.s/st)*st;x<(W-v.x)/v.s;x+=st){g.moveTo(x*v.s+v.x,0);g.lineTo(x*v.s+v.x,mh)}
+for(let y=Math.floor(-v.y/v.s/st)*st;y<(mh-v.y)/v.s;y+=st){g.moveTo(0,y*v.s+v.y);g.lineTo(W,y*v.s+v.y)}g.stroke();
+g.fillStyle='#8a8570';g.font=11*f+'px sans-serif';g.textAlign='left';g.fillText('grid = '+st+' m',8*f,mh-8*f);
+if(f==1){g.font='bold 12px sans-serif';g.lineWidth=3;detailLines().forEach((l,k)=>{g.strokeStyle='#faf8ef';g.strokeText(l,10,18+k*15);g.fillStyle='#1f2a1f';g.fillText(l,10,18+k*15)})}
+const path=(pts,cl)=>{g.beginPath();pts.forEach((p,i)=>{const q=P(p);i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1])});if(cl)g.closePath()};
+if(B.length){path(B,closed);if(closed){g.fillStyle='rgba(110,170,90,.16)';g.fill()}g.strokeStyle='#2f6b3a';g.lineWidth=2.5*f;g.stroke();if(closed&&f==1&&B[selE]){const a=P(B[selE]),b=P(B[(selE+1)%B.length]);g.strokeStyle='#e65100';g.lineWidth=5;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+if(!closed&&cur&&mode==='boundary'){const q=P(B[B.length-1]),r=P(cur);g.setLineDash([5,4]);g.beginPath();g.moveTo(q[0],q[1]);g.lineTo(r[0],r[1]);g.stroke();g.setLineDash([])}}
+S.forEach((s,i)=>{if(s.block.length){path(s.block,s.bc);g.strokeStyle=s.color;g.lineWidth=2*f;g.setLineDash([7*f,5*f]);g.stroke();g.setLineDash([]);if(s.bc){g.globalAlpha=.07;g.fillStyle=s.color;g.fill();g.globalAlpha=1}}});
+PL.forEach((pts,i)=>{const s=S[i],r=Math.max(1.6*f,Math.min(9*f,Math.min(s.cs,s.rs)*v.s*.28));g.fillStyle=s.color;g.strokeStyle=s.color;g.lineWidth=Math.max(1.2*f,r*.35);g.beginPath();pts.forEach(p=>{const q=P(p),x=q[0],y=q[1],k=s.mk;if(k=='square')g.rect(x-r,y-r,2*r,2*r);else if(k=='tri'){g.moveTo(x,y-r);g.lineTo(x+r,y+r*.8);g.lineTo(x-r,y+r*.8);g.closePath()}else if(k=='diamond'){g.moveTo(x,y-r*1.2);g.lineTo(x+r*1.2,y);g.lineTo(x,y+r*1.2);g.lineTo(x-r*1.2,y);g.closePath()}else if(k=='cross'){g.moveTo(x-r,y-r);g.lineTo(x+r,y+r);g.moveTo(x+r,y-r);g.lineTo(x-r,y+r)}else{g.moveTo(x+r,y);g.arc(x,y,r,0,7)}});if(s.mk=='cross')g.stroke();else g.fill()});
+const dim=(a,b,t)=>{const p=P(a),q=P(b);g.strokeStyle='#111';g.lineWidth=1.6*f;g.beginPath();g.moveTo(p[0],p[1]);g.lineTo(q[0],q[1]);g.stroke();g.fillStyle='#111';[p,q].forEach(z=>{g.beginPath();g.arc(z[0],z[1],2.6*f,0,7);g.fill()});
+g.font='bold '+11*f+'px sans-serif';g.textAlign='center';g.lineWidth=3*f;g.strokeStyle='#fff';const mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2-5*f;g.strokeText(t,mx,my);g.fillText(t,mx,my)};
+PL.forEach((pts,i)=>{const s=S[i],R=reg(s);if(!R||s.pat=='none'||s.pat=='border')return;const t=s.ang*Math.PI/180,u=[Math.cos(t),Math.sin(t)],w=[-u[1],u[0]];
+for(const p of pts){if(p[4]!==undefined||(s.pat=='twin'&&((p[3]%2)+2)%2))continue;const a=[p[0]+u[0]*s.cs,p[1]+u[1]*s.cs],b=[p[0]+w[0]*s.rs,p[1]+w[1]*s.rs];if(okf(s,R,a[0],a[1])&&okf(s,R,b[0],b[1])){dim(p,a,'col '+s.cs+' m');dim(p,b,'row '+s.rs+' m');break}}});
+if($('#rn').checked&&S[act]){const s=S[act],rows=rowsOf(act);if(rows.length&&s.rs*v.s>=9*f){const an=s.ang*Math.PI/180;g.font='bold '+10*f+'px sans-serif';g.textAlign='right';g.textBaseline='middle';g.lineWidth=3*f;rows.forEach(r=>{const q=P(r.a[0]),x=q[0]-Math.cos(an)*10*f,y=q[1]-Math.sin(an)*10*f;g.strokeStyle='#faf8ef';g.strokeText(r.label,x,y);g.fillStyle='#2b2b2b';g.fillText(r.label,x,y)});g.textBaseline='alphabetic'}}
+if(closed&&B.length<=12){g.font='bold '+11*f+'px sans-serif';g.textAlign='center';g.lineWidth=3*f;B.forEach((a,i)=>{const b=B[(i+1)%B.length],p=P(a),q=P(b),t=Math.hypot(b[0]-a[0],b[1]-a[1]).toFixed(1)+' m',x=(p[0]+q[0])/2,y=(p[1]+q[1])/2;g.strokeStyle='#faf8ef';g.strokeText(t,x,y);g.fillStyle='#2f6b3a';g.fillText(t,x,y)})}
+[B,...S.map(s=>s.block)].forEach(A=>A.forEach(p=>{const q=P(p);g.fillStyle='#fff';g.strokeStyle='#2f6b3a';g.lineWidth=1.5*f;g.beginPath();g.arc(q[0],q[1],4*f,0,7);g.fill();g.stroke()}));
+g.restore();
+if(lh){g.fillStyle='#fff';g.fillRect(0,mh,W,lh);g.textAlign='left';g.fillStyle='#1f2a1f';g.font='bold '+17*f+'px sans-serif';
+const A=closed?area(B):0,per=closed?B.reduce((s,p,i)=>{const q=B[(i+1)%B.length];return s+Math.hypot(q[0]-p[0],q[1]-p[1])},0):0;
+g.fillText('Plantation layout · '+A.toFixed(0)+' m² ('+(A/1e4).toFixed(2)+' ha, '+(A/4046.86).toFixed(2)+' acres) · perimeter '+per.toFixed(0)+' m',16*f,mh+26*f);
+g.font=14*f+'px sans-serif';const dl=detailLines();g.fillStyle='#1f2a1f';dl.forEach((l,k)=>g.fillText(l,16*f,mh+(48+k*20)*f));S.forEach((s,i)=>{const y=mh+(58+dl.length*20+i*30)*f;g.fillStyle=s.color;g.beginPath();g.arc(24*f,y-5*f,7*f,0,7);g.fill();g.fillStyle='#1f2a1f';
+g.fillText(s.name+' — '+(PAT.find(a=>a[0]==s.pat)||[0,''])[1]+' · rows '+s.rs+' m × cols '+s.cs+' m'+(s.ang?' · '+s.ang+'°':'')+' · '+PL[i].length+' plants',40*f,y)})}}
+function redraw(){PL=S.map(plants);draw(g,cw,ch,view,1,0);S.forEach((s,i)=>{const e=$('#cnt'+i);if(e)e.textContent=PL[i].length+' plants'+(closed?' · '+Math.round(PL[i].length/(area(B)/1e4))+'/ha':'')});
+const A=closed?area(B):0;$('#info').innerHTML=closed?'<b>Area:</b> '+A.toFixed(0)+' m² · '+(A/1e4).toFixed(2)+' ha · '+(A/4046.86).toFixed(2)+' acres · '+(A/40.4686).toFixed(1)+' cents<br><b>Total plants:</b> '+PL.reduce((s,p)=>s+p.length,0):'No boundary yet. Pick a shape or draw one.'}
+function resize(){const r=c.parentNode.getBoundingClientRect(),d=window.devicePixelRatio||1;cw=r.width;ch=r.height;c.width=cw*d;c.height=ch*d;g.setTransform(d,0,0,d,0,0);redraw()}
+const PAT=[['square','Square grid'],['stag','Triangular / staggered'],['quin','Quincunx (centre plant)'],['twin','Paired rows + alley'],['border','Border / fence row'],['none','Manual only']],MK=[['circle','Circle'],['square','Square'],['tri','Triangle'],['diamond','Diamond'],['cross','Cross']];
+const sel=(i,k,l,A)=>`<label>${l}<select data-i="${i}" data-k="${k}" style="width:100%;background:transparent;border:1px solid var(--ln);border-radius:6px;padding:4px">${A.map(a=>`<option value="${a[0]}" ${S[i][k]==a[0]?'selected':''}>${a[1]}</option>`).join('')}</select></label>`;
+function renderSp(){S.forEach(s=>{if(s.rs0==null)s.rs0=1;if(s.rp==null)s.rp='R';if(s.maxr==null)s.maxr=0;if(s.maxc==null)s.maxc=0;s.del=s.del||[];s.dr=s.dr||[];s.rl=s.rl||{}});PL=S.map(plants);const f=(i,k,l,st)=>`<label>${l}<input type="number" step="${st}" data-i="${i}" data-k="${k}" value="${S[i][k]}"></label>`;
+$('#sp').innerHTML=S.map((s,i)=>`<div class="card ${i==act?'on':''}" data-a="${i}"><div class="ch"><input type="color" data-i="${i}" data-k="color" value="${s.color}"><input class="nm" data-i="${i}" data-k="name" value="${s.name}"><span id="cnt${i}"></span><button data-del="${i}">✕</button></div><div class="g2">${sel(i,'pat','Layout',PAT)}${sel(i,'mk','Marker',MK)}</div><div class="g">${f(i,'rs','Row gap m',.1)}${f(i,'cs','Col gap m',.1)}${f(i,'ang','Angle °',1)}${f(i,'inset','Edge gap m',.1)}${f(i,'ox','Shift X m',.1)}${f(i,'oy','Shift Y m',.1)}${f(i,'al','Alley m',.1)}</div>${s.bc&&s.block.length>2?`<label>Block area (${$('#au').selectedOptions[0].text})<input type="number" step="any" data-i="${i}" data-k="barea" value="${+(area(s.block)/+$('#au').value).toFixed(3)}"></label>`:''}${rowsPanel(i,s)}<details style="margin-top:6px"><summary style="font-size:12px;color:var(--mut);cursor:pointer">Zone &amp; alternating rows/cols</summary><label>Zone % of farm (x0-x1,y0-y1; …)<input class="nm" data-i="${i}" data-k="zt" value="${zTxt(s.zone)}"></label><div class="g">${f(i,'md','Col mod N',1)}<label>Keep cols<input class="nm" data-i="${i}" data-k="mr" value="${s.mr||''}"></label>${f(i,'rd','Row mod N',1)}<label>Keep rows<input class="nm" data-i="${i}" data-k="rr" value="${s.rr||''}"></label></div></details></div>`).join('');redraw()}
+$('#sp').addEventListener('input',e=>{const t=e.target,i=+t.dataset.i,k=t.dataset.k;if(!k)return;if(k=='zt'){S[i].zone=parseZ(t.value);redraw();return}if(k=='rl'){const s=S[i];s.rl=s.rl||{};const j=t.dataset.rj;if(t.value.trim())s.rl[j]=t.value;else delete s.rl[j];redraw();return}if(k=='barea'){const sp=S[i],tg=parseFloat(t.value)*+$('#au').value;if(tg>0&&sp.block.length>2)scaleOne(sp.block,Math.sqrt(tg/area(sp.block)));redraw();return}const txt=['name','color','pat','mk','mr','rr','rp'].includes(k),v=txt?t.value:parseFloat(t.value);if(!txt&&(isNaN(v)||((k=='rs'||k=='cs')&&v<.2)))return;S[i][k]=v;redraw()});
+$('#sp').addEventListener('click',e=>{const dr=e.target.dataset.dr;if(dr!=null){const s=S[+e.target.dataset.i];s.dr=(s.dr||[]).concat(+dr);renderSp();return}const d=e.target.dataset.del;if(d!=null){if(S.length>1){S.splice(+d,1);act=0;renderSp()}return}const cd=e.target.closest('.card');if(cd){act=+cd.dataset.a;document.querySelectorAll('.card').forEach((x,i)=>x.classList.toggle('on',i==act))}});
+$('#add').onclick=()=>{addSp('Species '+(S.length+1),4,4);act=S.length-1;renderSp()};
+$('#pre').onclick=e=>{const t=e.target.dataset.p;if(!t)return;const W=+$('#pw').value||50,L=+$('#pl').value||50;
+B={rect:[[0,0],[W,0],[W,L],[0,L]],tri:[[0,L],[W,L],[W/2,0]],trap:[[W*.2,0],[W*.8,0],[W,L],[0,L]],L:[[0,0],[W*.55,0],[W*.55,L*.5],[W,L*.5],[W,L],[0,L]],pent:[[W/2,0],[W,L*.38],[W*.82,L],[W*.18,L],[0,L*.38]],circ:Array.from({length:36},(_,k)=>[W/2+W/2*Math.cos(k/36*6.2832),L/2+L/2*Math.sin(k/36*6.2832)]),hex:[[W*.25,0],[W*.75,0],[W,L/2],[W*.75,L],[W*.25,L],[0,L/2]],rtri:[[0,0],[W,L],[0,L]],para:[[W*.25,0],[W,0],[W*.75,L],[0,L]],irr:[[0,L*.2],[W*.35,0],[W*.8,L*.1],[W,L*.55],[W*.7,L],[W*.25,L*.9],[W*.05,L*.6]],U:[[0,0],[W*.3,0],[W*.3,L*.6],[W*.7,L*.6],[W*.7,0],[W,0],[W,L],[0,L]]}[t];
+closed=true;S.forEach(s=>{s.block=[];s.bc=false});view=fit(cw,ch,50);redraw();renderVerts();renderSp()};
+$('#modes').onclick=e=>{const m=e.target.dataset.m;if(!m)return;mode=m;document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('on',b.dataset.m==m));c.style.cursor=m=='pan'?'grab':'crosshair'};
+$('#close').onclick=()=>{if(mode=='block'){if(S[act].block.length>2)S[act].bc=true}else if(B.length>2){closed=true;view=fit(cw,ch,50)}redraw();renderVerts();renderSp()};
+$('#cb').onclick=()=>{B=[];closed=false;S.forEach(s=>{s.block=[];s.bc=false});redraw();renderVerts();renderSp()};
+$('#cbl').onclick=()=>{S[act].block=[];S[act].bc=false;redraw()};$('#cm').onclick=()=>{S[act].man=[];redraw()};
+const zoom=k=>{view.x=cw/2-(cw/2-view.x)*k;view.y=ch/2-(ch/2-view.y)*k;view.s*=k;redraw()};
+$('#zi').onclick=()=>zoom(1.3);$('#zo').onclick=()=>zoom(1/1.3);$('#zf').onclick=()=>{view=fit(cw,ch,50);redraw()};
+c.addEventListener('wheel',e=>{e.preventDefault();const k=e.deltaY<0?1.12:1/1.12,r=c.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;view.x=x-(x-view.x)*k;view.y=y-(y-view.y)*k;view.s*=k;redraw()},{passive:false});
+function wp(e){const r=c.getBoundingClientRect();let x=(e.clientX-r.left-view.x)/view.s,y=(e.clientY-r.top-view.y)/view.s;if($('#snap').checked){x=Math.round(x*2)/2;y=Math.round(y*2)/2}return[x,y]}
+const sc=(e)=>{const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+c.addEventListener('pointerdown',e=>{c.setPointerCapture(e.pointerId);const p=wp(e),[sx,sy]=sc(e);
+if(mode=='pan'){drag={pan:1,x:sx,y:sy};return}
+if(mode=='plant'){const sp=S[act],pl=PL[act]||[],dd=q=>Math.hypot(q[0]*view.s+view.x-sx,q[1]*view.s+view.y-sy);let best=-1,bd=11;pl.forEach((q,k)=>{const d=dd(q);if(d<bd){bd=d;best=k}});
+if(best<0)(sp.man=sp.man||[]).push(p);else{const q=pl[best];if(q[4]!==undefined&&q[4]>=0)sp.man.splice(q[4],1);else if(q[4]===undefined)sp.del=(sp.del||[]).concat(q[2]+','+q[3]);else{freeze(sp,act);const k=sp.man.findIndex(m=>dd(m)<11);if(k>=0)sp.man.splice(k,1)}}
+renderSp();return}
+if(mode=='edit'){let best=null,bd=16;[B,...S.map(s=>s.block)].forEach(A=>A.forEach((q,i)=>{const d=Math.hypot(q[0]*view.s+view.x-sx,q[1]*view.s+view.y-sy);if(d<bd){bd=d;best=[A,i]}}));if(best)drag={a:best[0],i:best[1]};return}
+const blk=mode=='block',A=blk?S[act].block:B,isC=blk?S[act].bc:closed;if(isC)return;
+if(A.length>2&&Math.hypot(A[0][0]*view.s+view.x-sx,A[0][1]*view.s+view.y-sy)<14){blk?S[act].bc=true:(closed=true,view=fit(cw,ch,50))}else A.push(p);redraw()});
+c.addEventListener('pointermove',e=>{cur=wp(e);const[sx,sy]=sc(e);if(drag){if(drag.pan){view.x+=sx-drag.x;view.y+=sy-drag.y;drag.x=sx;drag.y=sy}else drag.a[drag.i]=cur;redraw()}else if(!closed&&mode!='pan')redraw()});
+c.addEventListener('pointerup',()=>{drag=null;renderVerts();if(mode=='block'||mode=='edit')renderSp()});
+function exportImg(){const f=1.5,W=1600,lh=Math.round((70+S.length*30+detailLines().length*20)*f);let a=1e9,b=1e9,e=-1e9,d=-1e9;(B.length?B:[[0,0],[100,60]]).forEach(p=>{a=Math.min(a,p[0]);e=Math.max(e,p[0]);b=Math.min(b,p[1]);d=Math.max(d,p[1])});
+const mh=Math.max(500,Math.min(1300,Math.round((W-120)*(d-b)/Math.max(e-a,1))+120)),k=document.createElement('canvas');k.width=W;k.height=mh+lh;const x=k.getContext('2d'),sv={s:1,x:0,y:0};
+const sB=B;const v=fit(W,mh,60);draw(x,W,mh+lh,v,f,lh);k.toBlob(bl=>{blob=bl;$('#im').src=URL.createObjectURL(bl);$('#ov').style.display='flex'},'image/png')}
+$('#exp').onclick=exportImg;$('#xc').onclick=()=>$('#ov').style.display='none';
+$('#dl').onclick=()=>{const a=document.createElement('a');a.href=$('#im').src;a.download='plantation-layout'+($('#fid').value.trim()?'-'+$('#fid').value.trim().replace(/[^\w-]+/g,'_'):'')+'.png';a.click()};
+$('#sh').onclick=()=>{const f=new File([blob],'plantation-layout.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f],title:'Plantation layout'}).catch(()=>{});else alert('Sharing is not supported here. Long-press the image to save it, then share from your gallery.')};
+window.addEventListener('resize',resize);
+function detailLines(){const o=[],a=[$('#fid').value.trim()&&'Farm ID: '+$('#fid').value.trim(),$('#fnm').value.trim()&&'Farmer: '+$('#fnm').value.trim()].filter(Boolean);if(a.length)o.push(a.join('   ·   '));
+let first=true;$('#fnt').value.split('\n').forEach(l=>{(l.trim().match(/.{1,110}(\s|$)/g)||[]).forEach(c=>{o.push((first?'Note: ':'')+c.trim());first=false})});return o}
+['#fid','#fnm','#fnt'].forEach(s=>$(s).addEventListener('input',()=>redraw()));
+function rowsOf(i){const s=S[i],pl=PL[i]||[],m=new Map();pl.forEach(p=>{if(p[4]!==undefined)return;if(!m.has(p[3]))m.set(p[3],[]);m.get(p[3]).push(p)});
+return [...m.keys()].sort((a,b)=>a-b).map((j,r)=>{const a=m.get(j).sort((u,w)=>u[2]-w[2]);return{j,n:a.length,a,label:(s.rl&&s.rl[j])||((s.rp==null?'R':s.rp)+((+s.rs0||1)+r))}})}
+function rowsPanel(i,s){const R=rowsOf(i),n=(k,l)=>`<label>${l}<input type="number" step="1" data-i="${i}" data-k="${k}" value="${s[k]}"></label>`;
+return `<details style="margin-top:6px"><summary style="font-size:12px;color:var(--mut);cursor:pointer">Rows &amp; plant count (${R.length} rows · ${(PL[i]||[]).length} plants)</summary><div class="g">${n('rs0','Row # start')}<label>Prefix<input class="nm" data-i="${i}" data-k="rp" value="${s.rp}"></label>${n('maxr','Max rows (0=all)')}${n('maxc','Max per row (0=all)')}</div>${R.map(r=>`<div class="row" style="align-items:center;margin-top:3px"><input class="nm" style="flex:2" data-i="${i}" data-k="rl" data-rj="${r.j}" value="${r.label}"><span style="flex:1;font-size:12px;color:var(--mut)">${r.n} plants</span><button data-i="${i}" data-dr="${r.j}">✕</button></div>`).join('')}</details>`}
+function freeze(sp,i){sp.man=(PL[i]||[]).map(q=>[q[0],q[1]]);sp.pat='none';sp.del=[];sp.dr=[];sp.maxr=0;sp.maxc=0;sp.rl={}}
+$('#ca').onclick=()=>{const s=S[act];s.pat='none';s.man=[];s.del=[];renderSp()};
+$('#cr').onclick=()=>{const s=S[act];s.del=[];s.dr=[];renderSp()};
+$('#cf').onclick=()=>{freeze(S[act],act);renderSp()};
+$('#rn').onchange=()=>redraw();
+let selE=0;
+function scaleOne(A,k){let ox=1e9,oy=1e9;A.forEach(p=>{ox=Math.min(ox,p[0]);oy=Math.min(oy,p[1])});A.forEach(p=>{p[0]=ox+(p[0]-ox)*k;p[1]=oy+(p[1]-oy)*k})}
+function scaleAll(k){let ox=1e9,oy=1e9;B.forEach(p=>{ox=Math.min(ox,p[0]);oy=Math.min(oy,p[1])});[B,...S.flatMap(s=>[s.block,s.man])].forEach(A=>A.forEach(p=>{p[0]=ox+(p[0]-ox)*k;p[1]=oy+(p[1]-oy)*k}));view=fit(cw,ch,50);redraw();renderVerts();renderSp()}
+function fillArea(){if(closed&&document.activeElement!==$('#ar'))$('#ar').value=+(area(B)/+$('#au').value).toFixed(3)}
+function renderVerts(){if($('#verts').contains(document.activeElement))return;
+$('#verts').innerHTML=B.map((p,i)=>`<div class="row" style="margin-bottom:4px;align-items:center"><span style="width:18px">${i+1}</span><input type="number" step="0.1" data-vi="${i}" data-vk="0" value="${+p[0].toFixed(2)}"><input type="number" step="0.1" data-vi="${i}" data-vk="1" value="${+p[1].toFixed(2)}"><button data-vd="${i}">✕</button></div>`).join('');
+if(selE>=B.length)selE=0;
+$('#es').innerHTML=B.length>1?B.map((p,i)=>{const q=B[(i+1)%B.length];return `<option value="${i}" ${i==selE?'selected':''}>${i+1}→${(i+1)%B.length+1} (${Math.hypot(q[0]-p[0],q[1]-p[1]).toFixed(1)} m)</option>`}).join(''):'';
+const a=B[selE],b=B[(selE+1)%B.length];if(a&&b&&B.length>1)$('#el').value=Math.hypot(b[0]-a[0],b[1]-a[1]).toFixed(2);fillArea()}
+$('#verts').addEventListener('input',e=>{const t=e.target,i=t.dataset.vi;if(i==null)return;const v=parseFloat(t.value);if(isNaN(v))return;B[+i][+t.dataset.vk]=v;redraw();fillArea()});
+$('#verts').addEventListener('click',e=>{const d=e.target.dataset.vd;if(d!=null&&B.length>3){B.splice(+d,1);renderVerts();redraw()}});
+$('#av').onclick=()=>{if(B.length<2)return;const a=B[B.length-1],b=B[0];B.push([(a[0]+b[0])/2,(a[1]+b[1])/2]);renderVerts();redraw()};
+$('#sa').onclick=()=>{const tg=parseFloat($('#ar').value)*+$('#au').value,a=closed?area(B):0;if(tg>0&&a>0)scaleAll(Math.sqrt(tg/a))};
+$('#se').onclick=()=>{const a=B[selE],b=B[(selE+1)%B.length],tg=parseFloat($('#el').value);if(!a||!b||!(tg>0))return;const L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L>0)scaleAll(tg/L)};
+$('#es').onchange=()=>{selE=+$('#es').value;renderVerts();redraw()};
+$('#au').onchange=()=>{fillArea();renderSp()};
+const G='#9BBB59',Y='#FFC000',T='#31859C',O='#E36C09',RD='#C00000';
+const SP=(n,c,pat,cs,rs,inset,x)=>Object.assign({name:n,color:c,pat,cs,rs,inset,ang:0,ox:0,oy:0,al:3,mk:'circle',block:[],bc:false,man:[],zone:null,md:0,mr:'',rd:0,rr:''},x||{});
+const ring=(n,c,ins,cs)=>SP(n,c,'border',cs,cs,ins),Z=(...a)=>({zone:a});
+const A=(ringN)=>[ring(ringN,G,1,3),SP('Coconut',T,'square',4,9,2,Z([.03,0,.10,1],[.90,0,.97,1])),SP('Mango',Y,'square',6,6,5,Z([.14,0,.86,1]))];
+const TR=(r,m,c)=>[ring(r,G,1,3),ring(m,c,5,6),SP('Mango',Y,'square',6,6,11)];
+const J=(a,m,sc)=>[SP('Jackfruit',G,'square',5,5,2,Z([.03,0,.22,1],[.78,0,.97,1])),SP(a,O,'square',5,5,2,Z([.23,0,.77,.29],[.23,.71,.77,1])),SP(m,sc,'square',5,5,2,Z([.23,.29,.77,.71]))];
+const CE=()=>SP('Coconut',T,'square',5,9,2,Z([.03,0,.12,1],[.88,0,.97,1]));
+const C3=()=>SP('Coconut',T,'square',6,9,2,Z([.03,0,.19,1],[.81,0,.97,1]));
+const IN=(n,c,...z)=>SP(n,c,'square',5,5,2,Z(...z));
+const MODELS=[
+['#1&2 Mango, Coconut · Red Sanders ring',()=>A('Red Sanders')],
+['#3 Mango, Coconut · Teak ring',()=>A('Teak')],
+['#4 Mango, Cashew · Teak',()=>TR('Teak','Cashew',O)],
+['#5 Mango & Sapota · Red Sanders strips',()=>[ring('Red Sanders',G,1,6),SP('Mango',Y,'square',6,6,6,Z([.10,0,.20,1],[.35,0,.45,1],[.58,0,.68,1])),SP('Sapota',O,'square',6,6,6,Z([.22,0,.32,1],[.46,0,.56,1],[.70,0,.80,1]))]],
+['#6 Mango, Sapota · Teak',()=>TR('Teak','Sapota',O)],
+['#14 Mango, Sapota · Red Sanders',()=>TR('Red Sanders','Sapota',O)],
+['#7 Mango & Jamun · Teak (alternate)',()=>[ring('Teak',G,1,3),SP('Mango',Y,'square',6,6,5,{md:2,mr:'0'}),SP('Jamun',O,'square',6,6,5,{md:2,mr:'1'})]],
+['#8 Mango & Jamun · Red Sanders (2 mango : 1 jamun)',()=>[ring('Red Sanders',G,1,3),SP('Mango',Y,'square',6,6,5,{md:3,mr:'0,1'}),SP('Jamun',O,'square',6,6,5,{md:3,mr:'2'})]],
+['#15 Mango, Jamun · Teak',()=>TR('Teak','Jamun',O)],
+['#16 Mango, Jamun · Red Sanders',()=>TR('Red Sanders','Jamun',O)],
+['#9 Jamun, Jackfruit & Sapota',()=>J('Jamun','Sapota',Y)],
+['#12 Jamun, Jackfruit & Mango',()=>J('Jamun','Mango',Y)],
+['#10 Coconut, Jackfruit & Jamun',()=>[CE(),IN('Jackfruit',G,[.14,0,.86,1]),IN('Jamun',Y,[.14,0,.86,1])].map((s,i)=>i==1?Object.assign(s,{rd:4,rr:'1,2'}):i==2?Object.assign(s,{rd:4,rr:'0,3'}):s)],
+['#17 Coconut, Jackfruit & Jamun',()=>[CE(),IN('Jackfruit',G,[.14,.38,.86,.62]),IN('Jamun',Y,[.14,0,.86,.38],[.14,.62,.86,1])]],
+['#11 Coconut, Jackfruit & Sapota',()=>[CE(),IN('Jackfruit',G,[.14,0,.27,1],[.40,0,.60,1],[.73,0,.86,1]),IN('Sapota',O,[.28,0,.39,1],[.61,0,.72,1])]],
+['#18 Coconut, Jackfruit & Sapota',()=>[CE(),IN('Jackfruit',G,[.14,0,.33,1],[.63,0,.86,1]),IN('Sapota',O,[.34,0,.62,1])]],
+['#13 Coconut, Jackfruit & Citrus',()=>[C3(),IN('Jackfruit',G,[.21,0,.36,1],[.64,0,.79,1]),IN('Citrus',Y,[.37,0,.63,1])]],
+['#19 Coconut, Sapota & Citrus',()=>[C3(),IN('Sapota',RD,[.21,0,.36,1],[.64,0,.79,1]),IN('Citrus',Y,[.37,0,.63,1])]],
+['#20 Coconut, Mango & Citrus',()=>[C3(),IN('Mango',RD,[.21,0,.36,1],[.64,0,.79,1]),IN('Citrus',Y,[.37,0,.63,1])]],
+['#21 Coconut, Jackfruit ring & Citrus',()=>[ring('Jackfruit',G,1,5),SP('Coconut',T,'square',7,9,3,Z([.06,0,.26,1],[.74,0,.94,1])),IN('Citrus',Y,[.30,0,.70,1])]]];
+$('#msel').innerHTML=MODELS.map((m,i)=>`<option value="${i}">${m[0]}</option>`).join('');
+$('#mapply').onclick=()=>{if(!closed){B=[[0,0],[100,0],[100,100],[0,100]];closed=true;view=fit(cw,ch,50)}S=MODELS[+$('#msel').value][1]();act=0;renderSp();renderVerts()};
+B=[[0,0],[100,0],[100,60],[0,60]];closed=true;renderSp();resize();view=fit(cw,ch,50);redraw();renderVerts();
+</script></body></html>
